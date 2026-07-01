@@ -80,6 +80,18 @@ metrics = calculate_risk_metrics(
     weights=weights
 )
 
+st.sidebar.divider()
+
+st.sidebar.info(
+    """
+    **Portfolio Risk Dashboard**
+
+    This application analyzes historical portfolio performance using professional financial metrics including annual return, volatility, Sharpe Ratio, Beta, and Maximum Drawdown.
+
+    Data Source: Yahoo Finance
+    """
+)
+
 st.subheader("📈 Portfolio Metrics")
 
 col1, col2, col3, col4, col5 = st.columns(5)
@@ -163,5 +175,5 @@ for insight in insights:
 st.divider()
 
 st.caption(
-    "Built with Python, Streamlit, Plotly, Pandas, and yfinance."
-)
+    "Built with Python • Streamlit • Plotly • Pandas • yfinance"
+    )
