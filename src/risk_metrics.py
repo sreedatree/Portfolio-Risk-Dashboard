@@ -1,20 +1,12 @@
 from calculations import calculate_portfolio_returns
 from data_loader import load_market_data
 
-def calculate_beta(
-    start_date="2022-01-01",
-    end_date="2025-01-01",
-    weights=None
-):
+def calculate_beta(prices, start_date, end_date, weights):
     """
     Calculate portfolio beta relative to SPY.
     """
 
-    portfolio_returns = calculate_portfolio_returns(
-        start_date,
-        end_date,
-        weights
-    )
+    portfolio_returns = calculate_portfolio_returns(prices, weights)
 
     market_prices = load_market_data(
         start_date,
@@ -39,20 +31,12 @@ def calculate_beta(
 
     return beta
 
-def calculate_max_drawdown(
-    start_date="2022-01-01",
-    end_date="2025-01-01",
-    weights=None
-):
+def calculate_max_drawdown(prices, weights):
     """
     Calculate the portfolio's maximum drawdown.
     """
 
-    portfolio_returns = calculate_portfolio_returns(
-        start_date,
-        end_date,
-        weights
-    )
+    portfolio_returns = calculate_portfolio_returns(prices, weights)
 
     portfolio_growth = (1 + portfolio_returns).cumprod()
 
@@ -65,18 +49,10 @@ def calculate_max_drawdown(
     return drawdown.min()
 
 
-def calculate_risk_metrics(
-    start_date="2022-01-01",
-    end_date="2025-01-01",
-    weights=None
-):
+def calculate_risk_metrics(prices, start_date, end_date, weights):
     """Calculate annual return, volatility, and Sharpe ratio."""
 
-    portfolio_returns = calculate_portfolio_returns(
-    start_date,
-    end_date,
-    weights
-)
+    portfolio_returns = calculate_portfolio_returns(prices, weights)
 
     annual_return = portfolio_returns.mean() * 252
     volatility = portfolio_returns.std() * (252 ** 0.5)
@@ -85,17 +61,9 @@ def calculate_risk_metrics(
 
     sharpe_ratio = (annual_return - risk_free_rate) / volatility
 
-    beta = calculate_beta(
-        start_date,
-        end_date,
-        weights
-    )
+    beta = calculate_beta(prices, start_date, end_date, weights)
 
-    max_drawdown = calculate_max_drawdown(
-    start_date,
-    end_date,
-    weights
-)
+    max_drawdown = calculate_max_drawdown(prices, weights)
 
     return {
         "Annual Return": annual_return,

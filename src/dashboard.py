@@ -1,4 +1,5 @@
 import streamlit as st
+from data_loader import load_prices
 from calculations import calculate_portfolio_growth
 from calculations import calculate_correlation
 from risk_metrics import calculate_risk_metrics
@@ -85,24 +86,25 @@ for ticker, weight in zip(
 ):
     st.sidebar.write(f"{ticker}: {weight:.1%}")
 
-portfolio_growth = calculate_portfolio_growth(
-    start_date=f"{start_year}-01-01",
-    end_date=f"{end_year}-01-01",
-    weights=weights
-)
-
-corr_matrix = calculate_correlation(
+prices = load_prices(
+    tickers,
     start_date=f"{start_year}-01-01",
     end_date=f"{end_year}-01-01"
 )
 
+portfolio_growth = calculate_portfolio_growth(
+    prices,
+    weights
+)
+
+corr_matrix = calculate_correlation(prices)
+
 metrics = calculate_risk_metrics(
+    prices,
     start_date=f"{start_year}-01-01",
     end_date=f"{end_year}-01-01",
     weights=weights
 )
-
-prices = portfolio_growth["prices"]
 
 stock_performance = calculate_stock_performance(
     prices,
@@ -153,11 +155,13 @@ col5.metric(
     help="Largest percentage decline from a previous portfolio peak."
 )
 
-sector_allocation = calculate_sector_allocation(weights)
+sector_allocation = calculate_sector_allocation(
+    tickers,
+    weights
+)
 rolling_vol = calculate_rolling_volatility(
-    start_date=f"{start_year}-01-01",
-    end_date=f"{end_year}-01-01",
-    weights=weights
+    prices,
+    weights
 )
 insights = generate_insights(
     metrics,
