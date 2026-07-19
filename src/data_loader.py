@@ -1,22 +1,26 @@
 import streamlit as st
 import yfinance as yf
 
-TICKERS = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"]
 
 @st.cache_data
 def load_prices(
+    tickers,
     start_date="2022-01-01",
     end_date="2025-01-01"
 ):
-    """Download portfolio stock prices."""
+    """
+    Download historical closing prices for a list of stock tickers.
+    """
 
     prices = yf.download(
-        TICKERS,
+        tickers,
         start=start_date,
-        end=end_date
+        end=end_date,
+        progress=False
     )["Close"]
 
     return prices
+
 
 @st.cache_data
 def load_market_data(
@@ -30,7 +34,8 @@ def load_market_data(
     market = yf.download(
         "SPY",
         start=start_date,
-        end=end_date
+        end=end_date,
+        progress=False
     )["Close"]
 
     return market

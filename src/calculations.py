@@ -102,3 +102,23 @@ def calculate_rolling_volatility(
     )
 
     return rolling_vol
+
+import pandas as pd
+
+def calculate_stock_performance(prices, tickers, weights):
+    """
+    Creates a summary table showing each stock's
+    weight and total return over the selected period.
+    """
+
+    total_returns = (
+        prices.iloc[-1] / prices.iloc[0] - 1
+    )
+
+    performance = pd.DataFrame({
+        "Ticker": tickers,
+        "Weight": weights,
+        "Total Return": total_returns.values
+    })
+
+    return performance

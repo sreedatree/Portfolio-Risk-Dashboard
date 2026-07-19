@@ -9,6 +9,7 @@ from charts import sector_allocation_chart
 from calculations import calculate_rolling_volatility
 from charts import rolling_volatility_chart
 from insights import generate_insights
+from calculations import calculate_stock_performance
 
 
 st.set_page_config(
@@ -41,15 +42,33 @@ if start_year >= end_year:
     st.error("The end year must be after the start year.")
     st.stop()
 
-st.sidebar.subheader("Portfolio Weights")
-aapl = st.sidebar.slider("AAPL", 0.0, 1.0, 0.25, 0.01)
-msft = st.sidebar.slider("MSFT", 0.0, 1.0, 0.20, 0.01)
-nvda = st.sidebar.slider("NVDA", 0.0, 1.0, 0.15, 0.01)
-jpm = st.sidebar.slider("JPM", 0.0, 1.0, 0.15, 0.01)
-jnj = st.sidebar.slider("JNJ", 0.0, 1.0, 0.15, 0.01)
-xom = st.sidebar.slider("XOM", 0.0, 1.0, 0.10, 0.01)
 
-weights = [aapl, msft, nvda, jpm, jnj, xom]
+st.sidebar.subheader("Portfolio")
+
+ticker_input = st.sidebar.text_input(
+    "Enter stock tickers (comma-separated)",
+    value="AAPL, MSFT, NVDA, JPM, JNJ, XOM"
+)
+
+tickers = [
+    ticker.strip().upper()
+    for ticker in ticker_input.split(",")
+    if ticker.strip()
+]
+
+default_weight = 1 / len(tickers)
+
+weights = []
+
+for ticker in tickers:
+    weight = st.sidebar.slider(
+        ticker,
+        min_value=0.0,
+        max_value=1.0,
+        value=float(default_weight),
+        step=0.01
+    )
+    weights.append(weight)
 
 total_weight = sum(weights)
 
@@ -60,7 +79,10 @@ if total_weight == 0:
 weights = [w / total_weight for w in weights]
 
 st.sidebar.write("Normalized Portfolio Weights")
-for ticker, weight in zip(["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"], weights):
+for ticker, weight in zip(
+    tickers,
+    weights
+):
     st.sidebar.write(f"{ticker}: {weight:.1%}")
 
 portfolio_growth = calculate_portfolio_growth(
@@ -78,6 +100,14 @@ metrics = calculate_risk_metrics(
     start_date=f"{start_year}-01-01",
     end_date=f"{end_year}-01-01",
     weights=weights
+)
+
+prices = portfolio_growth["prices"]
+
+stock_performance = calculate_stock_performance(
+    prices,
+    tickers,
+    weights
 )
 
 st.sidebar.divider()
