@@ -12,7 +12,6 @@ from charts import rolling_volatility_chart
 from insights import generate_insights
 from calculations import calculate_stock_performance
 from stock_info import get_stock_info
-import pandas as pd
 
 
 st.set_page_config(
