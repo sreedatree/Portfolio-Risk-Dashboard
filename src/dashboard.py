@@ -11,6 +11,7 @@ from calculations import calculate_rolling_volatility
 from charts import rolling_volatility_chart
 from insights import generate_insights
 from calculations import calculate_stock_performance
+from stock_info import get_stock_info
 
 
 st.set_page_config(
@@ -51,11 +52,37 @@ ticker_input = st.sidebar.text_input(
     value="AAPL, MSFT, NVDA, JPM, JNJ, XOM"
 )
 
-tickers = [
+raw_tickers = [
     ticker.strip().upper()
     for ticker in ticker_input.split(",")
     if ticker.strip()
 ]
+
+stock_info = get_stock_info(raw_tickers)
+
+invalid = [
+    stock
+    for stock in stock_info
+    if stock["Company"] == "Invalid Ticker"
+]
+
+if invalid:
+    st.error("The following ticker(s) are invalid:")
+    for stock in invalid:
+        st.write(f"• {stock['Ticker']}")
+    st.stop()
+
+tickers = [
+    stock["Ticker"]
+    for stock in stock_info
+]
+
+st.sidebar.subheader("Detected Holdings")
+
+for stock in stock_info:
+    st.sidebar.write(
+        f"**{stock['Company']}** ({stock['Ticker']})"
+    )
 
 default_weight = 1 / len(tickers)
 
