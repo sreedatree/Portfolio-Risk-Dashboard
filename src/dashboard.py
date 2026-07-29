@@ -12,6 +12,7 @@ from charts import rolling_volatility_chart
 from insights import generate_insights
 from calculations import calculate_stock_performance
 from stock_info import get_stock_info
+import pandas as pd
 
 
 st.set_page_config(
@@ -183,9 +184,10 @@ col5.metric(
 )
 
 sector_allocation = calculate_sector_allocation(
-    tickers,
+    stock_info,
     weights
 )
+
 rolling_vol = calculate_rolling_volatility(
     prices,
     weights
@@ -227,6 +229,40 @@ with bottom_right:
 
 st.divider()
 
+st.divider()
+
+st.subheader("📋 Portfolio Holdings")
+
+display_df = stock_performance.copy()
+
+display_df["Weight"] = display_df["Weight"].map(
+    lambda x: f"{x:.1%}"
+)
+
+display_df["Total Return"] = display_df["Total Return"].map(
+    lambda x: f"{x:.2%}"
+)
+
+display_df = display_df.merge(
+    pd.DataFrame(stock_info),
+    on="Ticker"
+)
+
+display_df = display_df[
+    [
+        "Company",
+        "Ticker",
+        "Sector",
+        "Weight",
+        "Total Return"
+    ]
+]
+
+st.dataframe(
+    display_df,
+    use_container_width=True,
+    hide_index=True
+)
 
 st.subheader("💡 Portfolio Insights")
 

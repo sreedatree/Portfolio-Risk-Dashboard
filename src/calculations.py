@@ -24,11 +24,23 @@ def calculate_correlation(prices):
     returns = calculate_returns(prices)
     return returns.corr()
 
-def calculate_sector_allocation(tickers, weights):
+def calculate_sector_allocation(stock_info, weights):
+    """
+    Calculate portfolio allocation by sector using
+    live company information.
+    """
+
     allocation = {}
-    for ticker, weight in zip(tickers, weights):
-        sector = SECTORS.get(ticker, "Unknown")
-        allocation[sector] = allocation.get(sector, 0) + weight
+
+    for stock, weight in zip(stock_info, weights):
+
+        sector = stock["Sector"]
+
+        if sector not in allocation:
+            allocation[sector] = 0
+
+        allocation[sector] += weight
+
     return allocation
 
 def calculate_rolling_volatility(prices, weights, window=30):
