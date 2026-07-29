@@ -45,44 +45,48 @@ if start_year >= end_year:
     st.stop()
 
 
-st.sidebar.subheader("Portfolio")
+st.sidebar.subheader("Portfolio Builder")
 
-ticker_input = st.sidebar.text_input(
-    "Enter stock tickers (comma-separated)",
-    value="AAPL, MSFT, NVDA, JPM, JNJ, XOM"
-)
+default_tickers = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"]
 
-raw_tickers = [
-    ticker.strip().upper()
-    for ticker in ticker_input.split(",")
-    if ticker.strip()
-]
+if "portfolio" not in st.session_state:
+    st.session_state.portfolio = default_tickers.copy()
 
-stock_info = get_stock_info(raw_tickers)
+if "new_ticker" not in st.session_state:
+    st.session_state.new_ticker = ""
 
-invalid = [
-    stock
-    for stock in stock_info
-    if stock["Company"] == "Invalid Ticker"
-]
+new_ticker_input = st.sidebar.text_input("Add Stock", key="new_ticker")
 
-if invalid:
-    st.error("The following ticker(s) are invalid:")
-    for stock in invalid:
-        st.write(f"• {stock['Ticker']}")
-    st.stop()
+if st.sidebar.button("Add"):
+    ticker_to_add = new_ticker_input.strip().upper()
+    if ticker_to_add == "":
+        pass
+    elif ticker_to_add in st.session_state.portfolio:
+        st.sidebar.error(f"Ticker '{ticker_to_add}' is already in the portfolio.")
+    else:
+        validation_info = get_stock_info([ticker_to_add])
+        if validation_info and validation_info[0]["Company"] != "Invalid Ticker":
+            st.session_state.portfolio.append(ticker_to_add)
+            st.session_state.new_ticker = ""
+            st.experimental_rerun()
+        else:
+            st.sidebar.error(f"Ticker '{ticker_to_add}' is invalid.")
 
-tickers = [
-    stock["Ticker"]
-    for stock in stock_info
-]
+st.sidebar.divider()
 
-st.sidebar.subheader("Detected Holdings")
+st.sidebar.markdown("### Current Holdings")
 
-for stock in stock_info:
-    st.sidebar.write(
-        f"**{stock['Company']}** ({stock['Ticker']})"
-    )
+stock_info = get_stock_info(st.session_state.portfolio)
+
+for ticker in st.session_state.portfolio.copy():
+    company_name = next((item["Company"] for item in stock_info if item["Ticker"] == ticker), "Unknown Company")
+    col1, col2 = st.sidebar.columns([5, 1])
+    col1.markdown(f"**{company_name}** ({ticker})")
+    if col2.button("❌", key=f"remove_{ticker}"):
+        st.session_state.portfolio.remove(ticker)
+        st.experimental_rerun()
+
+tickers = st.session_state.portfolio
 
 default_weight = 1 / len(tickers)
 
