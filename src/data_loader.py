@@ -16,7 +16,8 @@ def load_prices(
         tickers,
         start=start_date,
         end=end_date,
-        progress=False
+        progress=False,
+        auto_adjust=True
     )["Close"]
 
     return prices
@@ -28,14 +29,15 @@ def load_market_data(
     end_date="2025-01-01"
 ):
     """
-    Download SPY ETF prices for market comparison.
+    Download adjusted closing prices for the SPY ETF to use as a benchmark against the portfolio.
     """
 
     market = yf.download(
         "SPY",
         start=start_date,
         end=end_date,
-        progress=False
+        progress=False,
+        auto_adjust=True
     )["Close"]
 
     return market

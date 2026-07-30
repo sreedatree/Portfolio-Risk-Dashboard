@@ -12,6 +12,8 @@ from charts import rolling_volatility_chart
 from insights import generate_insights
 from calculations import calculate_stock_performance
 from stock_info import get_stock_info
+import pandas as pd
+from health_score import calculate_health_score
 
 
 st.set_page_config(
@@ -19,13 +21,13 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("📊 Portfolio Risk Dashboard")
+st.title("Portfolio Risk Dashboard")
 st.caption(
     "Analyze portfolio performance, risk, diversification, and sector exposure using live market data."
 )
 st.divider()
 
-st.sidebar.markdown("## ⚙️ Dashboard Controls")
+st.sidebar.markdown("## Dashboard Controls")
 st.sidebar.header("Portfolio Settings")
 
 start_year = st.sidebar.selectbox(
@@ -117,31 +119,47 @@ for ticker, weight in zip(
 ):
     st.sidebar.write(f"{ticker}: {weight:.1%}")
 
-prices = load_prices(
-    tickers,
-    start_date=f"{start_year}-01-01",
-    end_date=f"{end_year}-01-01"
-)
+with st.spinner("📈 Loading market data..."):
 
-portfolio_growth = calculate_portfolio_growth(
-    prices,
-    weights
-)
+    try:
 
-corr_matrix = calculate_correlation(prices)
+        prices = load_prices(
+            tickers,
+            start_date=f"{start_year}-01-01",
+            end_date=f"{end_year}-01-01"
+        )
 
-metrics = calculate_risk_metrics(
-    prices,
-    start_date=f"{start_year}-01-01",
-    end_date=f"{end_year}-01-01",
-    weights=weights
-)
+        portfolio_growth = calculate_portfolio_growth(
+            prices,
+            weights,
+            start_date=f"{start_year}-01-01",
+            end_date=f"{end_year}-01-01"
+        )
 
-stock_performance = calculate_stock_performance(
-    prices,
-    tickers,
-    weights
-)
+        corr_matrix = calculate_correlation(prices)
+
+        metrics = calculate_risk_metrics(
+            prices,
+            start_date=f"{start_year}-01-01",
+            end_date=f"{end_year}-01-01",
+            weights=weights
+        )
+
+        stock_performance = calculate_stock_performance(
+            prices,
+            tickers,
+            weights
+        )
+
+    except Exception as e:
+
+        st.error(
+            "Unable to load market data. Please check your internet connection or try again."
+        )
+
+        st.exception(e)
+
+        st.stop()
 
 st.sidebar.divider()
 
@@ -155,7 +173,7 @@ st.sidebar.info(
     """
 )
 
-st.subheader("📈 Portfolio Metrics")
+st.subheader("Portfolio Metrics")
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -191,6 +209,53 @@ sector_allocation = calculate_sector_allocation(
     weights
 )
 
+st.subheader("Portfolio Summary")
+
+best_stock = stock_performance.loc[
+    stock_performance["Total Return"].idxmax()
+]
+
+worst_stock = stock_performance.loc[
+    stock_performance["Total Return"].idxmin()
+]
+
+largest_holding = stock_performance.loc[
+    stock_performance["Weight"].idxmax()
+]
+
+largest_sector = max(
+    sector_allocation.items(),
+    key=lambda x: x[1]
+)
+
+summary1, summary2, summary3, summary4 = st.columns(4)
+
+summary1.metric(
+    "Best Performer",
+    best_stock["Ticker"],
+    f"{best_stock['Total Return']:.2%}"
+)
+
+summary2.metric(
+    "Worst Performer",
+    worst_stock["Ticker"],
+    f"{worst_stock['Total Return']:.2%}"
+)
+
+summary3.metric(
+    "Largest Holding",
+    largest_holding["Ticker"],
+    f"{largest_holding['Weight']:.1%}"
+)
+
+summary4.metric(
+    "Largest Sector",
+    largest_sector[0],
+    f"{largest_sector[1]:.1%}"
+)
+
+st.divider()
+
 rolling_vol = calculate_rolling_volatility(
     prices,
     weights
@@ -200,7 +265,13 @@ insights = generate_insights(
     sector_allocation
 )
 
-st.subheader("📊 Portfolio Visualizations")
+health_score, health_insights = calculate_health_score(
+    metrics,
+    sector_allocation,
+    weights
+)
+
+st.subheader("Portfolio Visualizations")
 
 col_left, col_right = st.columns(2)
 
@@ -234,7 +305,7 @@ st.divider()
 
 st.divider()
 
-st.subheader("📋 Portfolio Holdings")
+st.subheader("Portfolio Holdings")
 
 display_df = stock_performance.copy()
 
@@ -267,7 +338,45 @@ st.dataframe(
     hide_index=True
 )
 
-st.subheader("💡 Portfolio Insights")
+st.divider()
+
+st.subheader("🩺 Portfolio Health")
+
+score_col, detail_col = st.columns([1, 2])
+
+with score_col:
+
+    if health_score >= 85:
+        color = "🟢"
+        rating = "Excellent"
+
+    elif health_score >= 70:
+        color = "🟡"
+        rating = "Good"
+
+    elif health_score >= 55:
+        color = "🟠"
+        rating = "Fair"
+
+    else:
+        color = "🔴"
+        rating = "Needs Improvement"
+
+    st.metric(
+        "Overall Score",
+        f"{health_score}/100"
+    )
+
+    st.markdown(f"### {color} {rating}")
+
+with detail_col:
+
+    st.markdown("#### Health Summary")
+
+    for item in health_insights:
+        st.write(item)
+
+st.subheader("Portfolio Insights")
 
 for insight in insights:
     st.info(insight)

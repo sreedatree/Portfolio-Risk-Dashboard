@@ -1,13 +1,5 @@
-from data_loader import load_prices
-
-SECTORS = {
-    "AAPL": "Technology",
-    "MSFT": "Technology",
-    "NVDA": "Technology",
-    "JPM": "Financials",
-    "JNJ": "Healthcare",
-    "XOM": "Energy"
-}
+import pandas as pd
+from data_loader import load_prices, load_market_data
 
 def calculate_returns(prices):
     return prices.pct_change().dropna()
@@ -16,9 +8,31 @@ def calculate_portfolio_returns(prices, weights):
     returns = calculate_returns(prices)
     return returns.dot(weights)
 
-def calculate_portfolio_growth(prices, weights):
+def calculate_portfolio_growth(prices, weights, start_date=None, end_date=None):
+    """
+    Calculate normalized growth for both the portfolio and the SPY benchmark.
+    """
+
     portfolio_returns = calculate_portfolio_returns(prices, weights)
-    return (1 + portfolio_returns).cumprod()
+    portfolio_growth = (1 + portfolio_returns).cumprod()
+
+    if isinstance(portfolio_growth, pd.DataFrame):
+        portfolio_growth = portfolio_growth.squeeze()
+
+    market_prices = load_market_data(
+        start_date=start_date,
+        end_date=end_date
+    )
+
+    if isinstance(market_prices, pd.DataFrame):
+        market_prices = market_prices.squeeze()
+
+    benchmark_growth = market_prices / market_prices.iloc[0]
+
+    return {
+        "portfolio": portfolio_growth,
+        "benchmark": benchmark_growth
+    }
 
 def calculate_correlation(prices):
     returns = calculate_returns(prices)
@@ -46,8 +60,6 @@ def calculate_sector_allocation(stock_info, weights):
 def calculate_rolling_volatility(prices, weights, window=30):
     portfolio_returns = calculate_portfolio_returns(prices, weights)
     return portfolio_returns.rolling(window).std() * (252 ** 0.5)
-
-import pandas as pd
 
 def calculate_stock_performance(prices, tickers, weights):
     """

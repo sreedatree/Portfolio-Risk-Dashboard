@@ -3,17 +3,32 @@ import pandas as pd
 
 def portfolio_growth_chart(portfolio_growth):
     """
-    Create an interactive Plotly chart showing portfolio growth.
+    Create an interactive Plotly chart comparing
+    portfolio growth against the SPY benchmark.
     """
 
+    df = pd.DataFrame({
+        "Portfolio": portfolio_growth["portfolio"],
+        "S&P 500 (SPY)": portfolio_growth["benchmark"]
+    })
+
     fig = px.line(
-        portfolio_growth,
-        title="Portfolio Growth Over Time"
+        data_frame=df,
+        x=df.index,
+        y=df.columns,
+        title="Portfolio vs. S&P 500"
+    )
+
+    fig.update_traces(
+        selector=dict(name="S&P 500 (SPY)"),
+        line=dict(dash="dash")
     )
 
     fig.update_layout(
         xaxis_title="Date",
-        yaxis_title="Portfolio Value"
+        yaxis_title="Growth (Normalized)",
+        legend_title="Performance",
+        hovermode="x unified"
     )
 
     return fig

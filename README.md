@@ -1,4 +1,4 @@
-# 📊 Portfolio Risk Dashboard
+# Portfolio Risk Dashboard
 
 An interactive portfolio analytics platform built with **Python**, **Streamlit**, **Plotly**, **Pandas**, and **Yahoo Finance** that helps investors analyze portfolio performance, risk, diversification, and market exposure.
 
@@ -22,7 +22,7 @@ Version 2 focuses on transforming the dashboard into a dynamic portfolio analyti
 
 ## ✨ Current Features
 
-### 📂 Portfolio Builder
+### Portfolio Builder
 
 - Add and remove stocks interactively
 - Live ticker validation
@@ -32,7 +32,7 @@ Version 2 focuses on transforming the dashboard into a dynamic portfolio analyti
 - Live company information
 - Live sector lookup
 
-### 📈 Portfolio Analytics
+### Portfolio Analytics
 
 - Annual Return
 - Annual Volatility
@@ -42,7 +42,7 @@ Version 2 focuses on transforming the dashboard into a dynamic portfolio analyti
 - Correlation Analysis
 - Rolling Volatility
 
-### 📊 Visualizations
+### Visualizations
 
 - Portfolio Growth Chart
 - Correlation Heatmap
@@ -50,7 +50,7 @@ Version 2 focuses on transforming the dashboard into a dynamic portfolio analyti
 - Rolling Volatility Chart
 - Holdings Performance Table
 
-### 💡 Portfolio Insights
+### Portfolio Insights
 
 - Automatic portfolio insights
 - Diversification analysis
@@ -59,7 +59,7 @@ Version 2 focuses on transforming the dashboard into a dynamic portfolio analyti
 
 ---
 
-## 🛠️ Technologies
+## Technologies
 
 - Python
 - Streamlit
@@ -70,13 +70,13 @@ Version 2 focuses on transforming the dashboard into a dynamic portfolio analyti
 
 ---
 
-## 📸 Dashboard
+## Dashboard
 
 *(Screenshot coming soon)*
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Clone the repository
 
@@ -196,7 +196,7 @@ The long-term goal of this project is to build a professional portfolio analytic
 
 ---
 
-## 👨‍💻 What I Learned
+## What I Learned
 
 Throughout this project I have gained experience with:
 
@@ -212,13 +212,13 @@ Throughout this project I have gained experience with:
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License.
 
 ---
 
-## 🙌 Acknowledgements
+## Acknowledgements
 
 - Yahoo Finance
 - Streamlit
