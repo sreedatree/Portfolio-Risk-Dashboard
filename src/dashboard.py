@@ -265,7 +265,7 @@ insights = generate_insights(
     sector_allocation
 )
 
-health_score, health_insights = calculate_health_score(
+health = calculate_health_score(
     metrics,
     sector_allocation,
     weights
@@ -346,15 +346,15 @@ score_col, detail_col = st.columns([1, 2])
 
 with score_col:
 
-    if health_score >= 85:
+    if health["score"] >= 85:
         color = "🟢"
         rating = "Excellent"
 
-    elif health_score >= 70:
+    elif health["score"] >= 70:
         color = "🟡"
         rating = "Good"
 
-    elif health_score >= 55:
+    elif health["score"] >= 55:
         color = "🟠"
         rating = "Fair"
 
@@ -362,10 +362,7 @@ with score_col:
         color = "🔴"
         rating = "Needs Improvement"
 
-    st.metric(
-        "Overall Score",
-        f"{health_score}/100"
-    )
+    st.metric("Overall Score", f"{health['score']}/100")
 
     st.markdown(f"### {color} {rating}")
 
@@ -373,7 +370,7 @@ with detail_col:
 
     st.markdown("#### Health Summary")
 
-    for item in health_insights:
+    for item in health["insights"]:
         st.write(item)
 
 st.subheader("Portfolio Insights")

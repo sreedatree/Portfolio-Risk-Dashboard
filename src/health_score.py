@@ -88,4 +88,25 @@ def calculate_health_score(metrics, sector_allocation, weights):
     else:
         score += 5
 
-    return score, insights
+    if score >= 90:
+        grade = "A+"
+        risk = "Low"
+    elif score >= 80:
+        grade = "A"
+        risk = "Low"
+    elif score >= 70:
+        grade = "B"
+        risk = "Moderate"
+    elif score >= 60:
+        grade = "C"
+        risk = "Elevated"
+    else:
+        grade = "D"
+        risk = "High"
+
+    return {
+        "score": score,
+        "grade": grade,
+        "risk": risk,
+        "insights": insights
+    }

@@ -6,7 +6,7 @@ This project is being built to simulate features found in professional portfolio
 
 ---
 
-## 🚧 Project Status
+## Project Status
 
 **Current Version:** Version 2 (In Development)
 
@@ -190,7 +190,7 @@ Portfolio-Risk-Dashboard
 
 ---
 
-## 🎯 Future Goals
+## Future Goals
 
 The long-term goal of this project is to build a professional portfolio analytics platform capable of helping investors better understand portfolio performance, diversification, and risk through interactive visualizations and data-driven insights.
 
