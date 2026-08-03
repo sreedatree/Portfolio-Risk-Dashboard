@@ -1,20 +1,21 @@
 import streamlit as st
+import pandas as pd
 from data_loader import load_prices
-from calculations import calculate_portfolio_growth
-from calculations import calculate_correlation
 from risk_metrics import calculate_risk_metrics
 from charts import portfolio_growth_chart
 from charts import correlation_heatmap
-from calculations import calculate_sector_allocation
 from charts import sector_allocation_chart
-from calculations import calculate_rolling_volatility
 from charts import rolling_volatility_chart
+from charts import health_score_gauge
 from insights import generate_insights
-from calculations import calculate_stock_performance
 from stock_info import get_stock_info
-import pandas as pd
 from health_score import calculate_health_score
-
+from calculations import calculate_portfolio_growth
+from calculations import calculate_correlation
+from calculations import calculate_sector_allocation
+from calculations import calculate_rolling_volatility
+from calculations import calculate_stock_performance
+from executive_summary import generate_executive_summary
 
 st.set_page_config(
     page_title="Portfolio Risk Dashboard",
@@ -27,7 +28,6 @@ st.caption(
 )
 st.divider()
 
-st.sidebar.markdown("## Dashboard Controls")
 st.sidebar.header("Portfolio Settings")
 
 start_year = st.sidebar.selectbox(
@@ -47,9 +47,16 @@ if start_year >= end_year:
     st.stop()
 
 
-st.sidebar.subheader("Portfolio Builder")
+st.sidebar.header("Portfolio Builder")
 
 default_tickers = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"]
+
+reset_col, add_col = st.sidebar.columns(2)
+
+with reset_col:
+    if st.button("🔄 Reset"):
+        st.session_state.portfolio = default_tickers.copy()
+        st.rerun()
 
 if "portfolio" not in st.session_state:
     st.session_state.portfolio = default_tickers.copy()
@@ -82,9 +89,13 @@ stock_info = get_stock_info(st.session_state.portfolio)
 
 for ticker in st.session_state.portfolio.copy():
     company_name = next((item["Company"] for item in stock_info if item["Ticker"] == ticker), "Unknown Company")
-    col1, col2 = st.sidebar.columns([5, 1])
-    col1.markdown(f"**{company_name}** ({ticker})")
-    if col2.button("❌", key=f"remove_{ticker}"):
+    col1, col2 = st.sidebar.columns([6, 1])
+col1.markdown(
+    f'<span title="{company_name}"><strong>{ticker}</strong></span>',
+    unsafe_allow_html=True,
+)
+
+if col2.button("✕", key=f"remove_{ticker}", type="secondary"):
         st.session_state.portfolio.remove(ticker)
         st.experimental_rerun()
 
@@ -111,13 +122,6 @@ if total_weight == 0:
     st.stop()
 
 weights = [w / total_weight for w in weights]
-
-st.sidebar.write("Normalized Portfolio Weights")
-for ticker, weight in zip(
-    tickers,
-    weights
-):
-    st.sidebar.write(f"{ticker}: {weight:.1%}")
 
 with st.spinner("📈 Loading market data..."):
 
@@ -271,6 +275,39 @@ health = calculate_health_score(
     weights
 )
 
+executive = generate_executive_summary(
+   metrics,
+   health,
+   best_stock,
+   largest_sector,
+   largest_holding
+)
+
+st.subheader("📋 Executive Summary")
+st.caption(
+    "A high-level overview of your portfolio's performance, risk, and diversification."
+)
+
+with st.container(border=True):
+
+    st.markdown(executive["summary"])
+
+    st.divider()
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("#### 🏆 Key Highlights")
+
+        st.write(f"**Best Performer:** {executive['best_stock']} ({executive['best_return']:.2%})")
+        st.write(f"**Largest Sector:** {executive['largest_sector']} ({executive['sector_weight']:.1%})")
+
+    with col2:
+        st.markdown("#### ❤️ Portfolio Health")
+
+        st.write(f"**Health Grade:** {health['grade']}")
+        st.write(f"**Risk Level:** {health['risk']}")
+
 st.subheader("Portfolio Visualizations")
 
 col_left, col_right = st.columns(2)
@@ -300,8 +337,6 @@ with bottom_right:
         vol_fig,
         use_container_width=True
     )
-
-st.divider()
 
 st.divider()
 
@@ -340,38 +375,44 @@ st.dataframe(
 
 st.divider()
 
-st.subheader("🩺 Portfolio Health")
+st.subheader("Portfolio Health")
 
-score_col, detail_col = st.columns([1, 2])
+left, right = st.columns([1, 1])
 
-with score_col:
+with left:
+    gauge = health_score_gauge(health["score"])
+    st.plotly_chart(gauge, use_container_width=True)
 
-    if health["score"] >= 85:
-        color = "🟢"
-        rating = "Excellent"
+with right:
+    st.markdown("### Portfolio Assessment")
 
-    elif health["score"] >= 70:
-        color = "🟡"
-        rating = "Good"
+    st.metric("Health Score", f"{health['score']}/100")
+    st.metric("Grade", health["grade"])
+    st.metric("Risk Level", health["risk"])
 
-    elif health["score"] >= 55:
-        color = "🟠"
-        rating = "Fair"
-
-    else:
-        color = "🔴"
-        rating = "Needs Improvement"
-
-    st.metric("Overall Score", f"{health['score']}/100")
-
-    st.markdown(f"### {color} {rating}")
-
-with detail_col:
-
-    st.markdown("#### Health Summary")
-
+    st.markdown("#### Health Insights")
     for item in health["insights"]:
         st.write(item)
+
+    if largest_holding["Weight"] > 0.35:
+        st.warning(
+            f"{largest_holding['Ticker']} makes up {largest_holding['Weight']:.1%} of your portfolio. Consider reducing concentration in a single holding."
+        )
+
+    elif largest_sector[1] > 0.50:
+        st.warning(
+            f"{largest_sector[0]} accounts for {largest_sector[1]:.1%} of your portfolio. Consider adding exposure to other sectors."
+        )
+
+    elif metrics["Beta"] > 1.3:
+        st.info(
+            "This portfolio is more volatile than the overall market based on its beta."
+        )
+
+    elif metrics["Sharpe Ratio"] > 1:
+        st.success(
+            "This portfolio has demonstrated strong risk-adjusted performance."
+        )
 
 st.subheader("Portfolio Insights")
 
@@ -381,5 +422,6 @@ for insight in insights:
 st.divider()
 
 st.caption(
+    "Portfolio Risk Dashboard v2.0 Beta\n\n"
     "Built with Python • Streamlit • Plotly • Pandas • yfinance"
-    )
+)
