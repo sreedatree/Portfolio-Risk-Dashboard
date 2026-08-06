@@ -6,7 +6,6 @@ from charts import portfolio_growth_chart
 from charts import correlation_heatmap
 from charts import sector_allocation_chart
 from charts import rolling_volatility_chart
-from charts import health_score_gauge
 from insights import generate_insights
 from stock_info import get_stock_info
 from health_score import calculate_health_score
@@ -16,6 +15,10 @@ from calculations import calculate_sector_allocation
 from calculations import calculate_rolling_volatility
 from calculations import calculate_stock_performance
 from executive_summary import generate_executive_summary
+
+def section_header(title, caption):
+    st.subheader(title)
+    st.caption(caption)
 
 st.set_page_config(
     page_title="Portfolio Risk Dashboard",
@@ -90,12 +93,12 @@ stock_info = get_stock_info(st.session_state.portfolio)
 for ticker in st.session_state.portfolio.copy():
     company_name = next((item["Company"] for item in stock_info if item["Ticker"] == ticker), "Unknown Company")
     col1, col2 = st.sidebar.columns([6, 1])
-col1.markdown(
+    col1.markdown(
     f'<span title="{company_name}"><strong>{ticker}</strong></span>',
     unsafe_allow_html=True,
 )
 
-if col2.button("✕", key=f"remove_{ticker}", type="secondary"):
+    if col2.button("✕", key=f"remove_{ticker}", type="secondary"):
         st.session_state.portfolio.remove(ticker)
         st.experimental_rerun()
 
@@ -177,7 +180,10 @@ st.sidebar.info(
     """
 )
 
-st.subheader("Portfolio Metrics")
+section_header(
+    "Portfolio Metrics",
+    "Key performance and risk metrics calculated from historical returns."
+)
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -213,7 +219,10 @@ sector_allocation = calculate_sector_allocation(
     weights
 )
 
-st.subheader("Portfolio Summary")
+section_header(
+    "Portfolio Summary",
+    "Highlights of your portfolio's strongest and weakest performers."
+)
 
 best_stock = stock_performance.loc[
     stock_performance["Total Return"].idxmax()
@@ -283,8 +292,8 @@ executive = generate_executive_summary(
    largest_holding
 )
 
-st.subheader("📋 Executive Summary")
-st.caption(
+section_header(
+    "📋 Executive Summary",
     "A high-level overview of your portfolio's performance, risk, and diversification."
 )
 
@@ -308,7 +317,10 @@ with st.container(border=True):
         st.write(f"**Health Grade:** {health['grade']}")
         st.write(f"**Risk Level:** {health['risk']}")
 
-st.subheader("Portfolio Visualizations")
+section_header(
+    "Portfolio Visualizations",
+    "Interactive charts showing portfolio growth, correlations, and sector exposure."
+)
 
 col_left, col_right = st.columns(2)
 
@@ -375,46 +387,80 @@ st.dataframe(
 
 st.divider()
 
-st.subheader("Portfolio Health")
+section_header(
+    "Portfolio Health",
+    "Evaluate the overall quality of your portfolio."
+)
 
-left, right = st.columns([1, 1])
+with st.container(border=True):
+    # Overall Score
+    score_col1, score_col2 = st.columns([1, 3])
 
-with left:
-    gauge = health_score_gauge(health["score"])
-    st.plotly_chart(gauge, use_container_width=True)
+    with score_col1:
+        st.metric(
+            "Overall Score",
+            f"{health['score']}/100"
+        )
 
-with right:
-    st.markdown("### Portfolio Assessment")
+    with score_col2:
 
-    st.metric("Health Score", f"{health['score']}/100")
-    st.metric("Grade", health["grade"])
-    st.metric("Risk Level", health["risk"])
+        metric1, metric2 = st.columns(2)
 
-    st.markdown("#### Health Insights")
+        metric1.metric(
+            "Grade",
+            health["grade"]
+        )
+
+        metric2.metric(
+            "Risk",
+            health["risk"]
+        )
+
+    st.divider()
+
+    st.markdown("### Strengths")
+
+    st.divider()
+
+st.markdown("### Recommendations")
+
+recommendations = []
+
+if largest_holding["Weight"] > 0.35:
+    recommendations.append(
+        f"Reduce exposure to {largest_holding['Ticker']} to improve diversification."
+    )
+
+if largest_sector[1] > 0.50:
+    recommendations.append(
+        f"Technology concentration is high. Consider adding holdings in other sectors."
+    )
+
+if metrics["Beta"] > 1.2:
+    recommendations.append(
+        "Portfolio volatility is above the overall market."
+    )
+
+if metrics["Sharpe Ratio"] < 1:
+    recommendations.append(
+        "Look for investments with stronger risk-adjusted returns."
+    )
+
+if not recommendations:
+    recommendations.append(
+        "Your portfolio appears well balanced. No major concerns detected."
+    )
+
+for recommendation in recommendations:
+    st.warning(recommendation)
+
     for item in health["insights"]:
-        st.write(item)
+        st.success(item)
 
-    if largest_holding["Weight"] > 0.35:
-        st.warning(
-            f"{largest_holding['Ticker']} makes up {largest_holding['Weight']:.1%} of your portfolio. Consider reducing concentration in a single holding."
-        )
-
-    elif largest_sector[1] > 0.50:
-        st.warning(
-            f"{largest_sector[0]} accounts for {largest_sector[1]:.1%} of your portfolio. Consider adding exposure to other sectors."
-        )
-
-    elif metrics["Beta"] > 1.3:
-        st.info(
-            "This portfolio is more volatile than the overall market based on its beta."
-        )
-
-    elif metrics["Sharpe Ratio"] > 1:
-        st.success(
-            "This portfolio has demonstrated strong risk-adjusted performance."
-        )
-
-st.subheader("Portfolio Insights")
+section_header(
+    "Market Insights",
+    "Automatically generated observations based on your portfolio analytics."
+)
 
 for insight in insights:
     st.info(insight)
