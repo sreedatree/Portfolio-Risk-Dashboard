@@ -126,6 +126,11 @@ if total_weight == 0:
 
 weights = [w / total_weight for w in weights]
 
+st.sidebar.markdown("#### Normalized Allocation")
+
+for ticker, weight in zip(tickers, weights):
+    st.sidebar.caption(f"{ticker}: **{weight:.1%}**")
+
 with st.spinner("📈 Loading market data..."):
 
     try:
