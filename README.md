@@ -74,8 +74,7 @@ Version 2 transforms the dashboard into a dynamic portfolio analytics platform w
 ---
 
 ## Dashboard
-
-*(Dashboard screenshot coming soon)*
+dashboard1.png
 
 ---
 
