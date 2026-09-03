@@ -74,7 +74,7 @@ Version 2 transforms the dashboard into a dynamic portfolio analytics platform w
 ---
 
 ## Dashboard
-dashboard1.png
+![Portfolio Risk Dashboard](images/dashboard.png)
 
 ---
 
