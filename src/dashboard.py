@@ -190,27 +190,30 @@ section_header(
     "Key performance and risk metrics calculated from historical returns."
 )
 
+portfolio_return = portfolio_growth["portfolio"].iloc[-1] - 1
+benchmark_return = portfolio_growth["benchmark"].iloc[-1] - 1
+outperformance = portfolio_return - benchmark_return
+
 col1, col2, col3, col4, col5 = st.columns(5)
 
 col1.metric(
-    "Annual Return",
-    f"{metrics['Annual Return']:.2%}"
+    "Portfolio Return",
+    f"{portfolio_return:.2%}"
 )
 
 col2.metric(
-    "Volatility",
-    f"{metrics['Volatility']:.2%}"
+    "S&P 500 Return",
+    f"{benchmark_return:.2%}"
 )
 
 col3.metric(
-    "Sharpe Ratio",
-    f"{metrics['Sharpe Ratio']:.2f}"
+    "Outperformance",
+    f"{outperformance:.2%}"
 )
 
 col4.metric(
-    "Beta",
-    f"{metrics['Beta']:.2f}",
-    help="Measures how sensitive the portfolio is to movements in the overall market. A beta of 1 means it tends to move with the market."
+    "Sharpe Ratio",
+    f"{metrics['Sharpe Ratio']:.2f}"
 )
 
 col5.metric(
@@ -473,6 +476,6 @@ for insight in insights:
 st.divider()
 
 st.caption(
-    "Portfolio Risk Dashboard v2.0 Beta\n\n"
+    "Portfolio Risk Dashboard v3.1 Beta\n\n"
     "Built with Python • Streamlit • Plotly • Pandas • yfinance"
 )
