@@ -10,6 +10,7 @@ from insights import generate_insights
 from stock_info import get_stock_info
 from health_score import calculate_health_score
 from calculations import calculate_portfolio_growth
+from calculations import calculate_portfolio_comparison
 from calculations import calculate_correlation
 from calculations import calculate_sector_allocation
 from calculations import calculate_rolling_volatility
@@ -464,6 +465,52 @@ for recommendation in recommendations:
 
     for item in health["insights"]:
         st.success(item)
+
+st.divider()
+
+section_header(
+    "Portfolio Comparison",
+    "Compare your current portfolio with a second portfolio."
+)
+
+st.markdown("### Portfolio B")
+
+portfolio_b_input = st.text_input(
+    "Enter Portfolio B tickers",
+    value="AAPL, MSFT, JNJ",
+    help="Enter ticker symbols separated by commas."
+)
+
+portfolio_b_tickers = [
+    ticker.strip().upper()
+    for ticker in portfolio_b_input.split(",")
+    if ticker.strip()
+]
+
+if portfolio_b_tickers:
+
+    portfolio_b_prices = load_prices(
+        portfolio_b_tickers,
+        start_date=f"{start_year}-01-01",
+        end_date=f"{end_year}-01-01"
+    )
+
+    portfolio_b_weights = [
+        1 / len(portfolio_b_tickers)
+    ] * len(portfolio_b_tickers)
+
+    comparison = calculate_portfolio_comparison(
+        prices,
+        weights,
+        portfolio_b_prices,
+        portfolio_b_weights
+    )
+
+    st.dataframe(
+        comparison,
+        use_container_width=True,
+        hide_index=True
+    )
 
 section_header(
     "Market Insights",
