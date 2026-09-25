@@ -77,6 +77,36 @@ def portfolio_growth_chart(portfolio_growth):
     fig = apply_dashboard_theme(fig)
     return fig
 
+def portfolio_comparison_chart(growth_a, growth_b):
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Scatter(
+            x=growth_a.index,
+            y=growth_a,
+            mode="lines",
+            name="Portfolio A"
+        )
+    )
+
+    fig.add_trace(
+        go.Scatter(
+            x=growth_b.index,
+            y=growth_b,
+            mode="lines",
+            name="Portfolio B"
+        )
+    )
+
+    fig.update_layout(
+        title="Portfolio A vs. Portfolio B",
+        xaxis_title="Date",
+        yaxis_title="Normalized Growth",
+        hovermode="x unified"
+    )
+
+    return fig
+
 
 def correlation_heatmap(corr_matrix):
     """
@@ -182,3 +212,5 @@ def health_score_gauge(score):
     )
 
     return apply_dashboard_theme(fig)
+
+

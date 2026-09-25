@@ -3,6 +3,7 @@ import pandas as pd
 from data_loader import load_prices
 from risk_metrics import calculate_risk_metrics
 from charts import portfolio_growth_chart
+from charts import portfolio_comparison_chart
 from charts import correlation_heatmap
 from charts import sector_allocation_chart
 from charts import rolling_volatility_chart
@@ -15,7 +16,9 @@ from calculations import calculate_correlation
 from calculations import calculate_sector_allocation
 from calculations import calculate_rolling_volatility
 from calculations import calculate_stock_performance
+from calculations import calculate_portfolio_returns
 from executive_summary import generate_executive_summary
+
 
 def section_header(title, caption):
     st.subheader(title)
@@ -504,6 +507,30 @@ if portfolio_b_tickers:
         weights,
         portfolio_b_prices,
         portfolio_b_weights
+    )
+    portfolio_b_returns = (
+        portfolio_b_prices.pct_change()
+        .fillna(0)
+        .mul(portfolio_b_weights, axis=1)
+        .sum(axis=1)
+    )
+
+    portfolio_a_growth = (
+        1 + calculate_portfolio_returns(prices, weights)
+    ).cumprod()
+
+    portfolio_b_growth = (
+        1 + portfolio_b_returns
+    ).cumprod()
+
+    comparison_fig = portfolio_comparison_chart(
+        portfolio_a_growth,
+        portfolio_b_growth
+    )
+
+    st.plotly_chart(
+        comparison_fig,
+        use_container_width=True
     )
 
     st.dataframe(
