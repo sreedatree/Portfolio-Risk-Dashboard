@@ -198,7 +198,7 @@ portfolio_return = portfolio_growth["portfolio"].iloc[-1] - 1
 benchmark_return = portfolio_growth["benchmark"].iloc[-1] - 1
 outperformance = portfolio_return - benchmark_return
 
-col1, col2, col3, col4, col5 = st.columns(5)
+col1, col2, col3 = st.columns(3)
 
 col1.metric(
     "Portfolio Return",
@@ -215,15 +215,42 @@ col3.metric(
     f"{outperformance:.2%}"
 )
 
-col4.metric(
+st.divider()
+
+st.markdown("### Risk Metrics")
+
+risk1, risk2, risk3, risk4 = st.columns(4)
+
+risk1.metric(
+    "Volatility",
+    f"{metrics['Volatility']:.2%}"
+)
+
+risk2.metric(
+    "Beta",
+    f"{metrics['Beta']:.2f}"
+)
+
+risk3.metric(
     "Sharpe Ratio",
     f"{metrics['Sharpe Ratio']:.2f}"
 )
 
-col5.metric(
+risk4.metric(
+    "Sortino Ratio",
+    f"{metrics['Sortino Ratio']:.2f}"
+)
+
+risk5, risk6 = st.columns(2)
+
+risk5.metric(
     "Max Drawdown",
-    f"{metrics['Max Drawdown']:.2%}",
-    help="Largest percentage decline from a previous portfolio peak."
+    f"{metrics['Max Drawdown']:.2%}"
+)
+
+risk6.metric(
+    "Value at Risk (95%)",
+    f"{metrics['Value at Risk']:.2%}"
 )
 
 sector_allocation = calculate_sector_allocation(
