@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from data_loader import load_prices
 from risk_metrics import calculate_risk_metrics
+from risk_analysis import generate_risk_analysis
 from charts import portfolio_growth_chart
 from charts import portfolio_comparison_chart
 from charts import correlation_heatmap
@@ -35,6 +36,7 @@ st.caption(
 )
 st.divider()
 
+# start side bar
 st.sidebar.header("Portfolio Settings")
 
 start_year = st.sidebar.selectbox(
@@ -188,6 +190,7 @@ st.sidebar.info(
     Data Source: Yahoo Finance
     """
 )
+# side bar end
 
 section_header(
     "Portfolio Metrics",
@@ -323,12 +326,25 @@ health = calculate_health_score(
     weights
 )
 
+risk_analysis = generate_risk_analysis(metrics)
+
+st.divider()
+
+section_header(
+    "Risk Analysis",
+    "Plain-English interpretations of your portfolio's historical risk metrics."
+)
+
+with st.container(border=True):
+    for analysis in risk_analysis:
+        st.write(analysis)
+
 executive = generate_executive_summary(
-   metrics,
-   health,
-   best_stock,
-   largest_sector,
-   largest_holding
+    metrics,
+    health,
+    best_stock,
+    largest_sector,
+    largest_holding
 )
 
 section_header(
