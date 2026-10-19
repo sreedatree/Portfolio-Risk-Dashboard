@@ -8,6 +8,7 @@ from charts import portfolio_comparison_chart
 from charts import correlation_heatmap
 from charts import sector_allocation_chart
 from charts import rolling_volatility_chart
+from charts import risk_profile_chart
 from insights import generate_insights
 from stock_info import get_stock_info
 from health_score import calculate_health_score
@@ -345,6 +346,20 @@ executive = generate_executive_summary(
     best_stock,
     largest_sector,
     largest_holding
+)
+
+st.divider()
+
+section_header(
+    "Risk Profile",
+    "Visual overview of your portfolio's historical risk indicators."
+)
+
+risk_fig = risk_profile_chart(metrics)
+
+st.plotly_chart(
+    risk_fig,
+    use_container_width=True
 )
 
 section_header(

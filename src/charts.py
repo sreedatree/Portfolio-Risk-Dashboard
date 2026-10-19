@@ -213,4 +213,41 @@ def health_score_gauge(score):
 
     return apply_dashboard_theme(fig)
 
+def risk_profile_chart(metrics):
+    """
+    Create a visual overview of the portfolio's risk metrics.
+    """
 
+    import plotly.graph_objects as go
+
+    risk_metrics = {
+        "Volatility": metrics["Volatility"] * 100,
+        "Beta": metrics["Beta"],
+        "Maximum Drawdown": abs(metrics["Max Drawdown"]) * 100,
+        "Value at Risk": abs(metrics["Value at Risk"]) * 100
+    }
+
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Bar(
+            x=list(risk_metrics.values()),
+            y=list(risk_metrics.keys()),
+            orientation="h",
+            text=[
+                f"{value:.2f}"
+                for value in risk_metrics.values()
+            ],
+            textposition="auto"
+        )
+    )
+
+    fig.update_layout(
+        title="Portfolio Risk Profile",
+        xaxis_title="Metric Value (mixed units)",
+        yaxis_title="",
+        template="plotly_white",
+        height=350
+    )
+
+    return fig
