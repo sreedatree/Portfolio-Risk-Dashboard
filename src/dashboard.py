@@ -23,9 +23,12 @@ from executive_summary import generate_executive_summary
 
 
 def section_header(title, caption):
+    """Display a consistent section title and supporting caption."""
     st.subheader(title)
     st.caption(caption)
 
+
+# Configure the page layout and introductory heading.
 st.set_page_config(
     page_title="Portfolio Risk Dashboard",
     layout="wide"
@@ -37,7 +40,7 @@ st.caption(
 )
 st.divider()
 
-# start side bar
+# Sidebar: select the historical period used throughout the dashboard.
 st.sidebar.header("Portfolio Settings")
 
 start_year = st.sidebar.selectbox(
@@ -52,11 +55,13 @@ end_year = st.sidebar.selectbox(
     index=2
 )
 
+# Prevent calculations with an invalid date range.
 if start_year >= end_year:
     st.error("The end year must be after the start year.")
     st.stop()
 
 
+# Portfolio builder: initialize holdings and provide a reset option.
 st.sidebar.header("Portfolio Builder")
 
 default_tickers = ["AAPL", "MSFT", "NVDA", "JPM", "JNJ", "XOM"]
@@ -68,12 +73,14 @@ with reset_col:
         st.session_state.portfolio = default_tickers.copy()
         st.rerun()
 
+# Session state preserves holdings and the ticker input across reruns.
 if "portfolio" not in st.session_state:
     st.session_state.portfolio = default_tickers.copy()
 
 if "new_ticker" not in st.session_state:
     st.session_state.new_ticker = ""
 
+# Validate symbols and prevent duplicate holdings before adding a stock.
 new_ticker_input = st.sidebar.text_input("Add Stock", key="new_ticker")
 
 if st.sidebar.button("Add"):
@@ -93,6 +100,7 @@ if st.sidebar.button("Add"):
 
 st.sidebar.divider()
 
+# List current holdings with company-name tooltips and removal controls.
 st.sidebar.markdown("### Current Holdings")
 
 stock_info = get_stock_info(st.session_state.portfolio)
@@ -101,9 +109,9 @@ for ticker in st.session_state.portfolio.copy():
     company_name = next((item["Company"] for item in stock_info if item["Ticker"] == ticker), "Unknown Company")
     col1, col2 = st.sidebar.columns([6, 1])
     col1.markdown(
-    f'<span title="{company_name}"><strong>{ticker}</strong></span>',
-    unsafe_allow_html=True,
-)
+        f'<span title="{company_name}"><strong>{ticker}</strong></span>',
+        unsafe_allow_html=True,
+    )
 
     if col2.button("✕", key=f"remove_{ticker}", type="secondary"):
         st.session_state.portfolio.remove(ticker)
@@ -111,6 +119,7 @@ for ticker in st.session_state.portfolio.copy():
 
 tickers = st.session_state.portfolio
 
+# Initialize equal allocations, then let users adjust each holding's weight.
 default_weight = 1 / len(tickers)
 
 weights = []
@@ -131,6 +140,7 @@ if total_weight == 0:
     st.sidebar.error("Please give at least one stock a weight greater than 0.")
     st.stop()
 
+# Normalize allocations to sum to 100%, regardless of slider totals.
 weights = [w / total_weight for w in weights]
 
 st.sidebar.markdown("#### Normalized Allocation")
@@ -138,7 +148,8 @@ st.sidebar.markdown("#### Normalized Allocation")
 for ticker, weight in zip(tickers, weights):
     st.sidebar.caption(f"{ticker}: **{weight:.1%}**")
 
-with st.spinner("📈 Loading market data..."):
+# Fetch historical prices and compute core analytics with error handling.
+with st.spinner("Loading market data..."):
 
     try:
 
@@ -191,8 +202,8 @@ st.sidebar.info(
     Data Source: Yahoo Finance
     """
 )
-# side bar end
 
+# Main dashboard: compare total portfolio return with the S&P 500.
 section_header(
     "Portfolio Metrics",
     "Key performance and risk metrics calculated from historical returns."
@@ -221,6 +232,7 @@ col3.metric(
 
 st.divider()
 
+# Display volatility, market sensitivity, risk-adjusted returns, and downside risk.
 st.markdown("### Risk Metrics")
 
 risk1, risk2, risk3, risk4 = st.columns(4)
@@ -257,11 +269,13 @@ risk6.metric(
     f"{metrics['Value at Risk']:.2%}"
 )
 
+# Aggregate holdings by sector for concentration analysis.
 sector_allocation = calculate_sector_allocation(
     stock_info,
     weights
 )
 
+# Identify the strongest and weakest stocks and largest exposures.
 section_header(
     "Portfolio Summary",
     "Highlights of your portfolio's strongest and weakest performers."
@@ -312,6 +326,7 @@ summary4.metric(
 
 st.divider()
 
+# Prepare rolling volatility, health scores, and explanatory insights.
 rolling_vol = calculate_rolling_volatility(
     prices,
     weights
@@ -331,6 +346,7 @@ risk_analysis = generate_risk_analysis(metrics)
 
 st.divider()
 
+# Translate technical risk statistics into plain-English interpretations.
 section_header(
     "Risk Analysis",
     "Plain-English interpretations of your portfolio's historical risk metrics."
@@ -350,6 +366,7 @@ executive = generate_executive_summary(
 
 st.divider()
 
+# Render a visual overview of the calculated risk indicators.
 section_header(
     "Risk Profile",
     "Visual overview of your portfolio's historical risk indicators."
@@ -362,8 +379,9 @@ st.plotly_chart(
     use_container_width=True
 )
 
+# Present a concise summary of portfolio results and overall health.
 section_header(
-    "📋 Executive Summary",
+    "Executive Summary",
     "A high-level overview of your portfolio's performance, risk, and diversification."
 )
 
@@ -376,17 +394,18 @@ with st.container(border=True):
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("#### 🏆 Key Highlights")
+        st.markdown("#### Key Highlights")
 
         st.write(f"**Best Performer:** {executive['best_stock']} ({executive['best_return']:.2%})")
         st.write(f"**Largest Sector:** {executive['largest_sector']} ({executive['sector_weight']:.1%})")
 
     with col2:
-        st.markdown("#### ❤️ Portfolio Health")
+        st.markdown("#### Portfolio Health")
 
         st.write(f"**Health Grade:** {health['grade']}")
         st.write(f"**Risk Level:** {health['risk']}")
 
+# Display interactive charts for growth, correlation, sectors, and volatility.
 section_header(
     "Portfolio Visualizations",
     "Interactive charts showing portfolio growth, correlations, and sector exposure."
@@ -422,6 +441,7 @@ with bottom_right:
 
 st.divider()
 
+# Format each holding's allocation and return for a readable data table.
 st.subheader("Portfolio Holdings")
 
 display_df = stock_performance.copy()
@@ -457,6 +477,7 @@ st.dataframe(
 
 st.divider()
 
+# Show the composite health score and its corresponding grade and risk level.
 section_header(
     "Portfolio Health",
     "Evaluate the overall quality of your portfolio."
@@ -492,6 +513,7 @@ with st.container(border=True):
 
     st.divider()
 
+# Generate actionable recommendations using concentration and risk thresholds.
 st.markdown("### Recommendations")
 
 recommendations = []
@@ -529,6 +551,7 @@ for recommendation in recommendations:
 
 st.divider()
 
+# Compare the current portfolio against a second, equally weighted portfolio.
 section_header(
     "Portfolio Comparison",
     "Compare your current portfolio with a second portfolio."
@@ -573,6 +596,7 @@ if portfolio_b_tickers:
         .sum(axis=1)
     )
 
+    # Compound daily returns to produce comparable growth series.
     portfolio_a_growth = (
         1 + calculate_portfolio_returns(prices, weights)
     ).cumprod()
@@ -597,6 +621,7 @@ if portfolio_b_tickers:
         hide_index=True
     )
 
+# Present generated market insights and dashboard version information.
 section_header(
     "Market Insights",
     "Automatically generated observations based on your portfolio analytics."

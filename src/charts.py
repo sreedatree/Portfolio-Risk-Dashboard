@@ -1,12 +1,14 @@
+# Plotly visualizations for portfolio performance, diversification, and risk.
+
 import plotly.express as px
 import pandas as pd
 import plotly.graph_objects as go
 
-def apply_dashboard_theme(fig):
-    """
-    Apply consistent styling to every Plotly chart.
-    """
 
+def apply_dashboard_theme(fig):
+    """Apply consistent typography, spacing, legends, and axes to a Plotly figure."""
+
+    # Standardize chart layout so dashboard visuals share a consistent appearance.
     fig.update_layout(
         template="plotly_white",
         font=dict(
@@ -40,12 +42,11 @@ def apply_dashboard_theme(fig):
 
     return fig
 
-def portfolio_growth_chart(portfolio_growth):
-    """
-    Create an interactive Plotly chart comparing
-    portfolio growth against the SPY benchmark.
-    """
 
+def portfolio_growth_chart(portfolio_growth):
+    """Plot normalized portfolio growth against the S&P 500 (SPY) benchmark."""
+
+    # Combine portfolio and benchmark series for a shared time-axis comparison.
     df = pd.DataFrame({
         "Portfolio": portfolio_growth["portfolio"],
         "S&P 500 (SPY)": portfolio_growth["benchmark"]
@@ -58,6 +59,7 @@ def portfolio_growth_chart(portfolio_growth):
         title="Portfolio Performance vs. S&P 500"
     )
 
+    # Use a dashed benchmark line to distinguish it from the portfolio.
     fig.update_traces(
         selector=dict(name="S&P 500 (SPY)"),
         line=dict(dash="dash")
@@ -65,7 +67,7 @@ def portfolio_growth_chart(portfolio_growth):
 
     fig.update_traces(
         hovertemplate="<b>%{fullData.name}</b><br>%{x|%b %d, %Y}<br>Growth: %{y:.2f}×<extra></extra>"
-)
+    )
 
     fig.update_layout(
         xaxis_title="Date",
@@ -77,9 +79,13 @@ def portfolio_growth_chart(portfolio_growth):
     fig = apply_dashboard_theme(fig)
     return fig
 
+
 def portfolio_comparison_chart(growth_a, growth_b):
+    """Compare cumulative growth trajectories for two portfolios."""
+
     fig = go.Figure()
 
+    # Plot both portfolios as separate traces on the same timeline.
     fig.add_trace(
         go.Scatter(
             x=growth_a.index,
@@ -109,10 +115,9 @@ def portfolio_comparison_chart(growth_a, growth_b):
 
 
 def correlation_heatmap(corr_matrix):
-    """
-    Create an interactive correlation heatmap.
-    """
+    """Visualize pairwise asset-return correlations on a scale from -1 to 1."""
 
+    # Fix the color range so correlation strengths remain comparable.
     fig = px.imshow(
         corr_matrix,
         text_auto=True,
@@ -129,21 +134,21 @@ def correlation_heatmap(corr_matrix):
 
     fig.update_traces(
         hovertemplate="Correlation: %{z:.2f}<extra></extra>"
-)
+    )
 
     fig = apply_dashboard_theme(fig)
     return fig
 
+
 def sector_allocation_chart(allocation):
-    """
-    Create a pie chart of sector allocation.
-    """
+    """Show the proportion of portfolio weight allocated to each sector."""
 
     df = pd.DataFrame({
         "Sector": allocation.keys(),
         "Weight": allocation.values()
     })
 
+    # Label slices with both sector names and allocation percentages.
     fig = px.pie(
         df,
         names="Sector",
@@ -155,15 +160,14 @@ def sector_allocation_chart(allocation):
         textposition="inside",
         textinfo="percent+label",
         hovertemplate="<b>%{label}</b><br>Weight: %{percent}<extra></extra>"
-)
+    )
 
     fig = apply_dashboard_theme(fig)
     return fig
 
+
 def rolling_volatility_chart(rolling_vol):
-    """
-    Create a rolling volatility chart.
-    """
+    """Plot annualized rolling volatility across the selected period."""
 
     fig = px.line(
         rolling_vol,
@@ -175,19 +179,19 @@ def rolling_volatility_chart(rolling_vol):
         yaxis_title="Annualized Volatility"
     )
 
+    # Format hover values as percentages for readability.
     fig.update_traces(
         hovertemplate="<b>%{x|%b %d, %Y}</b><br>Volatility: %{y:.2%}<extra></extra>"
-)
+    )
 
     fig = apply_dashboard_theme(fig)
-    return fig 
+    return fig
 
 
 def health_score_gauge(score):
-    """
-    Create a gauge chart for the portfolio health score.
-    """
+    """Display a portfolio health score on a color-banded 0–100 gauge."""
 
+    # Color bands distinguish lower and higher health-score ranges.
     fig = go.Figure(
         go.Indicator(
             mode="gauge+number",
@@ -213,13 +217,12 @@ def health_score_gauge(score):
 
     return apply_dashboard_theme(fig)
 
+
 def risk_profile_chart(metrics):
-    """
-    Create a visual overview of the portfolio's risk metrics.
-    """
+    """Display selected risk indicators in a horizontal bar chart."""
 
-    import plotly.graph_objects as go
-
+    # Convert percentage-based risk measures to percentage points for display.
+    # Beta is unitless, so bar lengths across metrics are not directly comparable.
     risk_metrics = {
         "Volatility": metrics["Volatility"] * 100,
         "Beta": metrics["Beta"],
@@ -229,6 +232,7 @@ def risk_profile_chart(metrics):
 
     fig = go.Figure()
 
+    # Label each bar with its numeric value to aid interpretation.
     fig.add_trace(
         go.Bar(
             x=list(risk_metrics.values()),
