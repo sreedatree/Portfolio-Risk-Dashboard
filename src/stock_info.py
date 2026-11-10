@@ -13,10 +13,9 @@ def get_stock_info(tickers):
     for ticker in tickers:
         try:
             info = yf.Ticker(ticker).info
-
             stock_data.append({
                 "Ticker": ticker,
-                "Company": info.get("longName", ticker),
+                "Company": info.get("longName") or info.get("shortName") or "Invalid Ticker",
                 "Sector": info.get("sector", "Unknown"),
                 "Industry": info.get("industry", "Unknown")
             })

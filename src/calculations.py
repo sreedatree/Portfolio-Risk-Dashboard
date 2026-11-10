@@ -1,18 +1,30 @@
 # Portfolio calculation utilities for returns, growth, risk, and allocation.
 
 import pandas as pd
-from data_loader import load_prices, load_market_data
+from data_loader import load_market_data
+
+
+def _align_weights(weights, tickers):
+    """Align labeled weights to tickers; sequences must already use ticker order."""
+    if isinstance(weights, (pd.Series, dict)):
+        weights = pd.Series(weights, dtype=float)
+        if not weights.index.is_unique or set(weights.index) != set(tickers):
+            raise ValueError("Portfolio weights must match the price tickers exactly.")
+        return weights.reindex(tickers)
+    return pd.Series(weights, index=tickers, dtype=float)
 
 
 def calculate_returns(prices):
     """Calculate daily percentage returns for each stock, excluding missing rows."""
-    return prices.pct_change().dropna()
+    return prices.pct_change(fill_method=None).dropna()
 
 
 def calculate_portfolio_returns(prices, weights):
     """Calculate weighted daily portfolio returns from individual stock returns."""
     returns = calculate_returns(prices)
-    return returns.dot(weights)
+    if returns.empty:
+        raise ValueError("Not enough usable price data to calculate portfolio returns.")
+    return returns.dot(_align_weights(weights, returns.columns))
 
 
 def calculate_portfolio_growth(prices, weights, start_date=None, end_date=None):
@@ -105,7 +117,8 @@ def calculate_sector_allocation(stock_info, weights):
 
     allocation = {}
 
-    for stock, weight in zip(stock_info, weights):
+    aligned_weights = _align_weights(weights, [stock["Ticker"] for stock in stock_info])
+    for stock, weight in zip(stock_info, aligned_weights):
 
         sector = stock["Sector"]
 
@@ -133,9 +146,8 @@ def calculate_stock_performance(prices, tickers, weights):
     )
 
     performance = pd.DataFrame({
-        "Ticker": tickers,
-        "Weight": weights,
-        "Total Return": total_returns.values
-    })
+        "Weight": _align_weights(weights, tickers),
+        "Total Return": total_returns.reindex(tickers)
+    }).rename_axis("Ticker").reset_index()
 
     return performance

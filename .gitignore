@@ -16,3 +16,6 @@ __pycache__/
 
 # Environment variables
 .env
+
+# Playwright execution artifacts (screenshots, traces, and raw results)
+test-results/playwright/

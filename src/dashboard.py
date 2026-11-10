@@ -80,23 +80,40 @@ if "portfolio" not in st.session_state:
 if "new_ticker" not in st.session_state:
     st.session_state.new_ticker = ""
 
-# Validate symbols and prevent duplicate holdings before adding a stock.
-new_ticker_input = st.sidebar.text_input("Add Stock", key="new_ticker")
-
-if st.sidebar.button("Add"):
-    ticker_to_add = new_ticker_input.strip().upper()
+# Callbacks run before widgets are created on the next run, so clearing the
+# input here is supported by Streamlit's session-state lifecycle.
+def add_stock(start_date, end_date):
+    ticker_to_add = st.session_state.new_ticker.strip().upper()
+    st.session_state.pop("portfolio_error", None)
     if ticker_to_add == "":
-        pass
+        return
     elif ticker_to_add in st.session_state.portfolio:
-        st.sidebar.error(f"Ticker '{ticker_to_add}' is already in the portfolio.")
+        st.session_state.portfolio_error = f"Ticker '{ticker_to_add}' is already in the portfolio."
     else:
-        validation_info = get_stock_info([ticker_to_add])
-        if validation_info and validation_info[0]["Company"] != "Invalid Ticker":
-            st.session_state.portfolio.append(ticker_to_add)
-            st.session_state.new_ticker = ""
-            st.experimental_rerun()
-        else:
-            st.sidebar.error(f"Ticker '{ticker_to_add}' is invalid.")
+        try:
+            validation_info = get_stock_info([ticker_to_add])
+            if not validation_info or validation_info[0]["Company"] == "Invalid Ticker":
+                st.session_state.portfolio_error = f"Ticker '{ticker_to_add}' is invalid."
+                return
+            load_prices([ticker_to_add], start_date, end_date)
+        except ValueError as error:
+            st.session_state.portfolio_error = f"Unable to add '{ticker_to_add}': {error}"
+            return
+        except Exception:
+            st.session_state.portfolio_error = f"Unable to validate '{ticker_to_add}'. Please try again."
+            return
+        st.session_state.portfolio.append(ticker_to_add)
+        st.session_state.new_ticker = ""
+
+
+# Validate both instrument metadata and historical prices before adding a stock.
+st.sidebar.text_input("Add Stock", key="new_ticker")
+st.sidebar.button(
+    "Add", on_click=add_stock,
+    args=(f"{start_year}-01-01", f"{end_year}-01-01")
+)
+if error := st.session_state.pop("portfolio_error", None):
+    st.sidebar.error(error)
 
 st.sidebar.divider()
 
@@ -115,9 +132,13 @@ for ticker in st.session_state.portfolio.copy():
 
     if col2.button("✕", key=f"remove_{ticker}", type="secondary"):
         st.session_state.portfolio.remove(ticker)
-        st.experimental_rerun()
+        st.rerun()
 
 tickers = st.session_state.portfolio
+
+if not tickers:
+    st.sidebar.info("Add at least one stock to build your portfolio, or click Reset.")
+    st.stop()
 
 # Initialize equal allocations, then let users adjust each holding's weight.
 default_weight = 1 / len(tickers)
@@ -141,7 +162,7 @@ if total_weight == 0:
     st.stop()
 
 # Normalize allocations to sum to 100%, regardless of slider totals.
-weights = [w / total_weight for w in weights]
+weights = pd.Series([w / total_weight for w in weights], index=tickers)
 
 st.sidebar.markdown("#### Normalized Allocation")
 
@@ -181,6 +202,10 @@ with st.spinner("Loading market data..."):
             weights
         )
 
+    except ValueError as e:
+        st.error(f"Unable to load market data: {e}")
+        st.stop()
+
     except Exception as e:
 
         st.error(
@@ -188,7 +213,6 @@ with st.spinner("Loading market data..."):
         )
 
         st.exception(e)
-
         st.stop()
 
 st.sidebar.divider()
@@ -565,61 +589,40 @@ portfolio_b_input = st.text_input(
     help="Enter ticker symbols separated by commas."
 )
 
-portfolio_b_tickers = [
+portfolio_b_tickers = list(dict.fromkeys(
     ticker.strip().upper()
     for ticker in portfolio_b_input.split(",")
     if ticker.strip()
-]
+))
 
 if portfolio_b_tickers:
 
-    portfolio_b_prices = load_prices(
-        portfolio_b_tickers,
-        start_date=f"{start_year}-01-01",
-        end_date=f"{end_year}-01-01"
-    )
+    try:
+        portfolio_b_prices = load_prices(
+            portfolio_b_tickers,
+            start_date=f"{start_year}-01-01",
+            end_date=f"{end_year}-01-01"
+        )
+        portfolio_b_weights = pd.Series(
+            1 / len(portfolio_b_tickers), index=portfolio_b_tickers
+        )
+        comparison = calculate_portfolio_comparison(
+            prices, weights, portfolio_b_prices, portfolio_b_weights
+        )
 
-    portfolio_b_weights = [
-        1 / len(portfolio_b_tickers)
-    ] * len(portfolio_b_tickers)
-
-    comparison = calculate_portfolio_comparison(
-        prices,
-        weights,
-        portfolio_b_prices,
-        portfolio_b_weights
-    )
-    portfolio_b_returns = (
-        portfolio_b_prices.pct_change()
-        .fillna(0)
-        .mul(portfolio_b_weights, axis=1)
-        .sum(axis=1)
-    )
-
-    # Compound daily returns to produce comparable growth series.
-    portfolio_a_growth = (
-        1 + calculate_portfolio_returns(prices, weights)
-    ).cumprod()
-
-    portfolio_b_growth = (
-        1 + portfolio_b_returns
-    ).cumprod()
-
-    comparison_fig = portfolio_comparison_chart(
-        portfolio_a_growth,
-        portfolio_b_growth
-    )
-
-    st.plotly_chart(
-        comparison_fig,
-        use_container_width=True
-    )
-
-    st.dataframe(
-        comparison,
-        use_container_width=True,
-        hide_index=True
-    )
+        # Use the same ticker-aligned returns for the table and chart.
+        portfolio_a_growth = (1 + calculate_portfolio_returns(prices, weights)).cumprod()
+        portfolio_b_growth = (
+            1 + calculate_portfolio_returns(portfolio_b_prices, portfolio_b_weights)
+        ).cumprod()
+    except ValueError as error:
+        st.error(f"Unable to compare Portfolio B: {error}")
+    except Exception:
+        st.error("Unable to load Portfolio B market data. Please try again.")
+    else:
+        comparison_fig = portfolio_comparison_chart(portfolio_a_growth, portfolio_b_growth)
+        st.plotly_chart(comparison_fig, use_container_width=True)
+        st.dataframe(comparison, use_container_width=True, hide_index=True)
 
 # Present generated market insights and dashboard version information.
 section_header(
