@@ -1,5 +1,13 @@
 # Live dashboard browser tests
 
+Offline regression checks for the reported bugs run with the existing application dependencies:
+
+```sh
+.venv/bin/python -m unittest discover -s tests -p 'test_*.py' -v
+```
+
+These checks use synthetic provider responses and Streamlit's AppTest to verify ticker alignment, input callbacks, removal of the last holding, missing price coverage, and comparison recovery without relying on Yahoo availability.
+
 The suite uses Python Playwright to drive the actual Streamlit app with live Yahoo Finance data. It exercises 19 scenarios in separate browser contexts, checks Python exceptions displayed by Streamlit and uncaught browser JavaScript errors, and saves a screenshot, page text, and trace for each scenario. Two checks independently download ticker-aligned reference returns to verify the displayed analytics.
 
 From the repository root, install the test dependency and a browser:
