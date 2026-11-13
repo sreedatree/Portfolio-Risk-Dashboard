@@ -53,3 +53,22 @@ Open a recorded trace:
 During the initial test session, Playwright was installed outside the project into `/private/tmp/portfolio-playwright-deps`. To reuse that temporary installation while it exists, prefix the test command with `PLAYWRIGHT_PYTHON_PATH=/private/tmp/portfolio-playwright-deps`.
 
 The checks cover browser behavior and selected data correctness, not a complete audit of every financial formula, accessibility requirement, or supported browser.
+
+## Extended exploratory checks
+
+Add `--extended` to include 12 additional scenarios covering invalid-date and zero-weight recovery, rebuilding an empty portfolio, partially invalid comparisons, independent browser sessions, equivalent portfolios in different ticker orders, sector recommendation accuracy, repeated health insights, zero-weight diversification, Sharpe consistency, and later-listed holdings such as ARM.
+
+Run just these additional scenarios with separate evidence:
+
+```sh
+PLAYWRIGHT_PYTHON_PATH=/private/tmp/portfolio-playwright-deps \
+  .venv/bin/python -u tests/e2e_dashboard.py \
+  --url http://127.0.0.1:8503 \
+  --executable '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' \
+  --extended --match 'Extended:' \
+  --output test-results/playwright/extended
+```
+
+Omit `PLAYWRIGHT_PYTHON_PATH` when Playwright is installed in the project's virtual environment. Set `--url` to the running server's address.
+
+Chart checks inspect Plotly's decoded rendered traces. The Sharpe check compares the headline with the actual Arrow dataframe received by the browser over Streamlit's WebSocket; it does not call application calculation functions or replace market data. These assertions express expected consistent behavior and can fail on existing application defects. See [the November 12 review](../test-results/REVIEW-2026-11-12.md) for findings and feature suggestions.

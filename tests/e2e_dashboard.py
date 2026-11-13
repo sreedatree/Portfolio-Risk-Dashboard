@@ -25,6 +25,7 @@ def main():
     parser.add_argument("--output", default="test-results/playwright")
     parser.add_argument("--executable", help="Installed Chrome/Chromium executable")
     parser.add_argument("--match", default="", help="Only run checks whose names contain this text")
+    parser.add_argument("--extended", action="store_true", help="Include recovery and analytics consistency checks")
     args = parser.parse_args()
     output = Path(args.output).resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -120,12 +121,33 @@ def main():
             page = context.new_page()
             errors = []
             page.on("pageerror", lambda error: errors.append(str(error)))
+            # Read the actual Arrow table messages delivered to this browser.
+            # Streamlit renders tables on canvas, without text cells in the DOM.
+            page.dashboard_tables = []
+            if args.extended:
+                from streamlit.proto.ForwardMsg_pb2 import ForwardMsg
+                import pyarrow as pa
+
+                def received_frame(payload):
+                    if not isinstance(payload, bytes):
+                        return
+                    message = ForwardMsg()
+                    message.ParseFromString(payload)
+                    if message.HasField("delta") and message.delta.HasField("new_element"):
+                        element = message.delta.new_element
+                        if element.HasField("arrow_data_frame"):
+                            table = pa.ipc.open_stream(pa.BufferReader(element.arrow_data_frame.data)).read_all()
+                            page.dashboard_tables.append(table.to_pandas())
+
+                page.on("websocket", lambda socket: socket.on("framereceived", received_frame))
             started = time.monotonic()
             result = {"step": index, "name": name, "status": "PASS"}
             print(f"STEP {index}: {name}", flush=True)
             try:
                 fresh(page)
-                action(page)
+                observations = action(page)
+                if observations is not None:
+                    result["observations"] = observations
                 assert not errors, f"Browser JavaScript errors: {errors}"
             except Exception as error:
                 result.update(status="FAIL", error=str(error), traceback=traceback.format_exc())
@@ -323,6 +345,175 @@ def main():
             overflow = page.evaluate("document.documentElement.scrollWidth > window.innerWidth")
             assert not overflow, "Page overflows the mobile viewport horizontally"
         run("Mobile viewport renders without horizontal page overflow", mobile)
+
+        if args.extended:
+            def remove_first(page):
+                sidebar(page).get_by_role("button", name="✕", exact=True).first.click()
+                page.wait_for_timeout(300)
+                settled(page, complete=False)
+                no_exception(page)
+
+            def date_recovery(page):
+                before = value(page, "Portfolio Return")
+                choose_year(page, "Start Year", 2024)
+                choose_year(page, "End Year", 2023)
+                expect(page.get_by_test_id("stMetric")).to_have_count(0)
+                choose_year(page, "End Year", 2025)
+                choose_year(page, "Start Year", 2022)
+                settled(page)
+                no_exception(page)
+                assert value(page, "Portfolio Return") == before
+            run("Extended: invalid dates recover to the original analytics", date_recovery)
+
+            def zero_recovery(page):
+                for ticker in DEFAULTS:
+                    change_slider(page, ticker, "Home")
+                expect(page.get_by_test_id("stMetric")).to_have_count(0)
+                change_slider(page, "MSFT", "End")
+                settled(page)
+                no_exception(page)
+                expect(sidebar(page).get_by_text("MSFT: 100.0%", exact=True)).to_be_visible()
+                assert abs(float(value(page, "Portfolio Return").rstrip("%")) / 100 - reference["MSFT"]) < 0.001
+            run("Extended: zero allocations recover to a valid single stock allocation", zero_recovery)
+
+            def empty_recovery(page):
+                for _ in DEFAULTS:
+                    remove_first(page)
+                expect(page.get_by_text("Add at least one stock to build your portfolio, or click Reset.", exact=True)).to_be_visible()
+                expect(page.get_by_test_id("stMetric")).to_have_count(0)
+                sidebar(page).get_by_role("textbox", name="Add Stock").fill("MSFT")
+                sidebar(page).get_by_role("button", name="Add", exact=True).click()
+                expect(page.get_by_role("slider", name="MSFT", exact=True)).to_be_visible(timeout=30000)
+                settled(page)
+                no_exception(page)
+                expect(page.get_by_role("slider")).to_have_count(1)
+                for label in ["Portfolio Return", "Volatility", "Beta", "Sharpe Ratio", "Sortino Ratio"]:
+                    assert re.fullmatch(r"-?\d+(\.\d+)?%?", value(page, label)), label
+            run("Extended: remove every holding and rebuild a single stock portfolio", empty_recovery)
+
+            def comparison_recovery(page):
+                before = value(page, "Portfolio Return")
+                submit_comparison(page, "AAPL, ZZZZINVALID123")
+                expect(page.get_by_text(re.compile("Unable to compare Portfolio B:.*ZZZZINVALID123"))).to_be_visible()
+                expect(page.get_by_test_id("stDataFrame")).to_have_count(1)
+                assert value(page, "Portfolio Return") == before
+                submit_comparison(page, " msft, MSFT, , aapl ")
+                settled(page)
+                no_exception(page)
+                expect(page.get_by_test_id("stDataFrame")).to_have_count(2)
+                expect(page.get_by_test_id("stAlert").filter(has_text="Unable to compare")).to_have_count(0)
+                assert value(page, "Portfolio Return") == before
+            run("Extended: partially invalid comparison recovers without changing Portfolio A", comparison_recovery)
+
+            def session_isolation(page):
+                remove_first(page)
+                other = browser.new_context(viewport={"width": 1440, "height": 1000})
+                try:
+                    second = other.new_page()
+                    fresh(second)
+                    no_exception(second)
+                    expect(second.get_by_role("slider", name="AAPL", exact=True)).to_be_visible()
+                    expect(page.get_by_role("slider", name="AAPL", exact=True)).to_have_count(0)
+                finally:
+                    other.close()
+            run("Extended: separate browser sessions keep independent holdings", session_isolation)
+
+            def charts(page, title):
+                chart = page.get_by_test_id("stPlotlyChart").filter(has_text=title)
+                chart.scroll_into_view_if_needed()
+                graph = chart.locator(".js-plotly-plot")
+                expect(graph).to_have_count(1)
+                # Plotly 6 accepts binary encoded arrays in g.data. _fullData
+                # contains the decoded values actually used to render the graph.
+                return graph.evaluate("g => g._fullData.map(t => ({name:t.name, x:Array.from(t.x || []), y:Array.from(t.y || [])}))")
+
+            def identical_comparison(page):
+                submit_comparison(page, ", ".join(reversed(DEFAULTS)))
+                settled(page)
+                no_exception(page)
+                traces = charts(page, "Portfolio A vs. Portfolio B")
+                assert len(traces) == 2
+                assert traces[0]["x"] == traces[1]["x"]
+                assert traces[0]["y"] and len(traces[0]["y"]) == len(traces[1]["y"])
+                difference = max(abs(a - b) for a, b in zip(traces[0]["y"], traces[1]["y"]))
+                assert difference < 1e-10, f"Identical portfolios diverge by {difference}"
+                return {"maximum_growth_difference": difference}
+            run("Extended: identical portfolios match despite reversed ticker order", identical_comparison)
+
+            def sector_accuracy(page):
+                for ticker in DEFAULTS:
+                    change_slider(page, ticker, "Home")
+                change_slider(page, "XOM", "End")
+                settled(page)
+                no_exception(page)
+                assert value(page, "Largest Sector") == "Energy"
+                warnings = page.get_by_test_id("stAlert").all_inner_texts()
+                page.get_by_role("heading", name="Recommendations", exact=True).scroll_into_view_if_needed()
+                assert not any("Technology concentration is high" in text for text in warnings), (
+                    "100% XOM is Energy, but the recommendation reports Technology concentration. " + repr(warnings))
+            run("Extended: concentration recommendation names the actual sector", sector_accuracy)
+
+            def unique_insights(page):
+                change_slider(page, "AAPL", "End")
+                settled(page)
+                no_exception(page)
+                texts = page.get_by_test_id("stAlert").all_inner_texts()
+                duplicates = sorted({text for text in texts if texts.count(text) > 1})
+                page.get_by_role("heading", name="Recommendations", exact=True).scroll_into_view_if_needed()
+                assert not duplicates, f"Repeated insight cards: {duplicates}"
+            run("Extended: health insights are displayed once each", unique_insights)
+
+            def funded_holdings(page):
+                for ticker in DEFAULTS:
+                    change_slider(page, ticker, "Home")
+                change_slider(page, "MSFT", "End")
+                settled(page)
+                no_exception(page)
+                texts = page.get_by_test_id("stAlert").all_inner_texts()
+                page.get_by_role("heading", name="Recommendations", exact=True).scroll_into_view_if_needed()
+                assert not any("Good diversification" in text or "Excellent diversification" in text for text in texts), (
+                    "A portfolio invested 100% in MSFT is described as diversified because zero-weight holdings are counted. " + repr(texts))
+            run("Extended: diversification reflects funded holdings rather than zero weight entries", funded_holdings)
+
+            def consistent_sharpe(page):
+                headline = float(value(page, "Sharpe Ratio"))
+                tables = [table for table in page.dashboard_tables if {"Metric", "Portfolio A", "Portfolio B"}.issubset(table.columns)]
+                assert tables, "No comparison dataframe was received by the browser"
+                table = tables[-1]
+                comparison = float(table.loc[table["Metric"] == "Sharpe Ratio", "Portfolio A"].iloc[0])
+                table.to_json(output / "comparison-table.json", orient="records", indent=2)
+                page.get_by_test_id("stDataFrame").nth(1).scroll_into_view_if_needed()
+                assert abs(headline - comparison) < 0.01, (
+                    f"Portfolio A Sharpe is {headline} in the headline but {comparison:.6f} in the comparison table.")
+                return {"headline_sharpe": headline, "comparison_sharpe": comparison}
+            run("Extended: headline and comparison use the same Sharpe definition", consistent_sharpe)
+
+            def ipo_dates(page):
+                submit_comparison(page, "ARM")
+                settled(page)
+                no_exception(page)
+                traces = charts(page, "Portfolio A vs. Portfolio B")
+                assert len(traces) == 2 and all(trace["x"] and trace["y"] for trace in traces), traces
+                starts = {trace["name"]: trace["x"][0] for trace in traces}
+                ends = {trace["name"]: trace["x"][-1] for trace in traces}
+                assert len(set(starts.values())) == 1 and len(set(ends.values())) == 1, (
+                    f"Comparison uses different historical windows for a later-listed holding: starts={starts}, ends={ends}")
+            run("Extended: newer listing comparison uses a common historical window", ipo_dates)
+
+            def benchmark_dates(page):
+                sidebar(page).get_by_role("textbox", name="Add Stock").fill("ARM")
+                sidebar(page).get_by_role("button", name="Add", exact=True).click()
+                expect(page.get_by_role("slider", name="ARM", exact=True)).to_be_visible(timeout=60000)
+                settled(page)
+                no_exception(page)
+                traces = charts(page, "Portfolio Performance vs. S&P 500")
+                assert len(traces) == 2 and all(trace["x"] and trace["y"] for trace in traces), traces
+                # Missing values in Plotly's decoded arrays can be NaN, which
+                # Playwright preserves as Python floats rather than None.
+                starts = {trace["name"]: next(x for x, y in zip(trace["x"], trace["y"])
+                                               if y is not None and math.isfinite(y)) for trace in traces}
+                assert len(set(starts.values())) == 1, f"Portfolio and SPY start at different dates: {starts}"
+            run("Extended: adding a newer listing aligns benchmark and portfolio dates", benchmark_dates)
         browser.close()
 
     passed = sum(result["status"] == "PASS" for result in results)
